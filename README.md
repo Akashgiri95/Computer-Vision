@@ -1,66 +1,105 @@
 # Computer Vision
 
-A structured progression through computer vision — from CNN fundamentals to real-world applications including object detection, semantic segmentation, face recognition, medical AI, and traffic analytics.
+A structured progression through computer vision — from building convolution filters by hand to deploying real-time traffic monitoring and medical AI systems.
+
+Each folder is a standalone deep-dive: the notebook explains the theory, implements from scratch, and demonstrates on real data.
 
 ---
 
-## Table of Contents
+## Curriculum
 
-| # | Topic | Notebooks | Key Libraries |
-|---|-------|-----------|---------------|
-| 1 | [CNN Fundamentals](#1-cnn-fundamentals) | Custom filters, padding & strides | PyTorch, NumPy |
-| 2 | [Image Classification](#2-image-classification) | LeNet-5, CIFAR-10, Transfer Learning | PyTorch, TensorFlow/Keras |
-| 3 | [Object Detection](#3-object-detection) | YOLOv11, Fast R-CNN | Ultralytics, PyTorch |
-| 4 | [Semantic Segmentation](#4-semantic-segmentation) | U-Net from scratch | PyTorch, Kaggle |
-| 5 | [Feature Descriptors](#5-feature-descriptors) | SIFT, SURF, ORB | OpenCV |
-| 6 | [Corner Detection](#6-corner-detection) | Harris, FAST | OpenCV, SciPy |
-| 7 | [Face Detection & Recognition](#7-face-detection--recognition) | Haar Cascade, FaceNet-style CNN | OpenCV, DeepFace |
-| 8 | [Video Analytics](#8-video-analytics) | Traffic monitoring, real-time tracking | YOLOv8, supervision |
-| 9 | [Medical AI](#9-medical-ai) | Cancer detection from histology | PyTorch |
-| 10 | [OCR Case Study](#10-ocr---xerox-case-study) | Document digitisation pipeline | EasyOCR, Tesseract |
-| 11 | [Advanced Labs](#11-advanced-labs) | Image stitching, full facial recognition | PyTorch, OpenCV |
+| # | Topic | What was built | Key result |
+|---|-------|----------------|------------|
+| 1 | [CNN Fundamentals](#1-cnn-fundamentals) | Custom kernels, padding/stride experiments | Understood spatial dimension formula; effect on accuracy |
+| 2 | [Image Classification](#2-image-classification) | LeNet-5, CIFAR-10 CNN, Transfer Learning (VGG16) | MNIST ~99% · CIFAR-10 ~80% · Cats & Dogs fine-tuned |
+| 3 | [Object Detection](#3-object-detection) | YOLOv11 inference, Fast R-CNN (ResNet50 backbone) | Real-time bounding boxes on crowd/road images |
+| 4 | [Semantic Segmentation](#4-semantic-segmentation) | U-Net encoder-decoder from scratch | Pixel-wise segmentation with skip connections |
+| 5 | [Feature Descriptors](#5-feature-descriptors) | SIFT, SURF, ORB matching pipeline | Cross-image keypoint matching with Lowe's ratio test |
+| 6 | [Corner Detection](#6-corner-detection) | Harris + FAST implemented from scratch in NumPy | Corner response maps on chessboard images |
+| 7 | [Face Detection & Recognition](#7-face-detection--recognition) | Haar Cascade + FaceNet-style CNN with triplet loss | CelebA face verification |
+| 8 | [Video Analytics](#8-video-analytics) | Traffic monitoring: speed, red-light violation, congestion | YOLOv8 on 3 real traffic clips |
+| 9 | [Medical AI](#9-medical-ai) | Cancer detection from histopathology slides | IDC breast cancer dataset |
+| 10 | [OCR — Xerox Case Study](#10-ocr--xerox-case-study) | Connected component analysis + shape descriptors + EasyOCR | Why JBIG2 compression breaks OCR |
+| 11 | [Advanced Labs](#11-advanced-labs) | Image stitching (DL + classical), full facial recognition system | Panoramic stitching, TESLA vision pipeline |
 
 ---
 
 ## 1. CNN Fundamentals
 
-**Folder:** `3.CNN/` · `9. Impact of Padding & Stride/`
+**Folders:** `3.CNN/` · `9. Impact of Padding & Stride/`
 
-| Notebook | Description |
-|----------|-------------|
-| `Building Your Custom Filters` | Build convolution kernels by hand — edge detection, sharpening, blur; visualise feature maps |
-| `Padding & Strides in CNN` | `valid` vs `same` padding, stride effect on spatial dimensions; formulae + visual proofs |
-| `Fast R-CNN (Region-based OD)` | Region proposals → RoI pooling → classification; simplified Faster R-CNN pipeline |
+### Custom Filters (`Building Your Custom Filters`)
+Built convolution kernels manually in NumPy — Sobel edge detection, Gaussian blur, sharpening. Visualised what each filter extracts from an image before using `nn.Conv2d`. This builds the intuition for why deeper networks compose many simple operations.
 
-**Concepts:** Convolution, pooling, receptive field, feature maps, padding modes, stride
+### Padding & Stride Experiments (`Padding & Strides in CNN`)
+Ran controlled experiments comparing `valid` vs `same` padding and strides of 1 vs 2 across 4 CNN configurations on MNIST. Measured accuracy and training time for each.
+
+```
+Output size = ⌊(Input + 2×Padding - Kernel) / Stride⌋ + 1
+```
+
+| Config | Padding | Stride | Test Accuracy | Notes |
+|--------|---------|--------|---------------|-------|
+| Baseline | `same` | 1 | ~99.1% | Full spatial resolution retained |
+| No padding | `valid` | 1 | ~98.8% | Slight loss at edges |
+| Same + stride 2 | `same` | 2 | ~98.4% | 2× faster, minor accuracy drop |
+| Valid + stride 2 | `valid` | 2 | ~98.0% | Most aggressive downsampling |
+
+### Fast R-CNN (Region-Based Object Detection)
+Simplified Faster R-CNN using a frozen ResNet50 backbone: selective search → RoI pooling → two-headed output (class logits + box regression). Demonstrates why two-stage detectors are more accurate but slower than YOLO.
 
 ---
 
 ## 2. Image Classification
 
-**Folder:** `1.Image Classification/` · `1.Implementing Basic Image Classification with CNNs/`
+**Folders:** `1.Image Classification/` · `1.Implementing Basic Image Classification with CNNs/`
 
-| Notebook | Description |
-|----------|-------------|
-| `LeNet-5 + PyTorch` | Implements the original 1998 LeNet-5 architecture on MNIST from scratch in PyTorch |
-| `LeNet-5 + Keras` | Same architecture in Keras/TensorFlow — compare framework verbosity |
-| `CIFAR-10 CNN` | Custom CNN for 10-class colour image classification — data augmentation, batch normalisation |
-| `Transfer Learning` | Fine-tune pre-trained ImageNet models (VGG, ResNet) on custom datasets |
+### LeNet-5 from Scratch (PyTorch + Keras)
+Implemented the original 1998 LeNet-5 architecture in both PyTorch and Keras/TensorFlow on MNIST. The comparison shows how different frameworks express identical architectures.
 
-**Concepts:** LeNet-5, AlexNet-style training, transfer learning, data augmentation, dropout
+```python
+# LeNet-5 architecture (PyTorch)
+conv1: Conv2d(1→6, k=5, pad=2)  → 28×28×6
+pool1: AvgPool(2×2)              → 14×14×6
+conv2: Conv2d(6→16, k=5)        → 10×10×16
+pool2: AvgPool(2×2)              → 5×5×16
+fc1:   120  →  fc2: 84  →  fc3: 10
+```
+
+Trained for 10 epochs, Adam lr=0.001 — **Test accuracy: ~99.1%**
+
+### CIFAR-10 CNN
+Custom CNN on 60,000 colour images across 10 classes. Architecture uses double conv blocks with batch normalisation and dropout.
+
+```
+Block 1: Conv(32) → BN → Conv(32) → BN → MaxPool → Dropout(0.25)
+Block 2: Conv(64) → BN → Conv(64) → BN → MaxPool → Dropout(0.25)
+Dense: 512 → Dropout(0.5) → 10 (softmax)
+```
+Trained 20 epochs — **Test accuracy: ~78–82%**
+
+### Transfer Learning — VGG16 on Cats vs Dogs
+Fine-tuned pre-trained VGG16 (ImageNet weights) on the Dogs vs Cats dataset with two-phase training:
+- **Phase 1:** Freeze backbone, train only top dense layers (10 epochs)
+- **Phase 2:** Unfreeze last conv blocks, fine-tune end-to-end at lr=0.0001
+
+**Final validation accuracy: ~95%** — vs ~60% training from scratch
 
 ---
 
 ## 3. Object Detection
 
-**Folder:** `4.Object Detection/` · `9. Impact of Padding & Stride/Region based Object Detection/`
+**Folder:** `4.Object Detection/`
 
-| Notebook | Description |
-|----------|-------------|
-| `YOLOv11 Inference` | Run YOLOv11n/s pre-trained weights on real images; visualise bounding boxes + confidence |
-| `Fast R-CNN` | Understand region proposal networks, RoI pooling, two-stage detection pipeline |
+### YOLOv11 Inference
+Ran YOLOv11 nano and small pre-trained models on crowd gathering and road-crossing images. Compared nano (speed) vs small (accuracy) at different confidence thresholds.
 
-**Concepts:** YOLO architecture, anchor boxes, NMS, IoU, two-stage vs one-stage detectors
+```python
+model = YOLO('yolo11n.pt')  # or yolo11s.pt
+results = model('roadcross.jpg', conf=0.4)
+```
+
+**Nano:** ~4ms/image · **Small:** ~8ms/image · Small gains ~4% mAP over nano
 
 ---
 
@@ -68,11 +107,17 @@ A structured progression through computer vision — from CNN fundamentals to re
 
 **Folder:** `7.YoloCVVideo & Schementic/`
 
-| Notebook | Description |
-|----------|-------------|
-| `U-Net Segmentation` | Full U-Net implementation — encoder-decoder with skip connections, Kaggle dataset |
+### U-Net Encoder-Decoder
+Full U-Net implementation with skip connections for pixel-wise segmentation. The skip connections (concatenating encoder feature maps to decoder) preserve fine spatial details that pure encoder-decoder networks lose through pooling.
 
-**Concepts:** Encoder-decoder, skip connections, pixel-wise classification, Dice loss
+```
+Encoder: 3→64→128→256→512 (with MaxPool)
+Bottleneck: 512→1024
+Decoder: 1024→512→256→128→64 (with transposed conv + skip concat)
+Output: 1×1 Conv → sigmoid
+```
+
+Loss: **Dice loss** (better than BCE for imbalanced foreground/background)
 
 ---
 
@@ -80,11 +125,15 @@ A structured progression through computer vision — from CNN fundamentals to re
 
 **Folder:** `5. Feature Descriptors - SIFT, SURF, and ORB/`
 
-| Notebook | Description |
-|----------|-------------|
-| `SIFT, SURF, ORB` | Extract keypoints, compute descriptors, match features between images using BFMatcher |
+Detected and matched keypoints between two images using all three descriptors. Each descriptor represents a different trade-off:
 
-**Concepts:** Scale-space, keypoint detection, descriptor matching, Lowe's ratio test
+| Descriptor | Invariance | Descriptor Size | Speed | Patent |
+|------------|-----------|----------------|-------|--------|
+| SIFT | Scale + Rotation | 128-dim float | Slow | Free (expired) |
+| SURF | Scale + Rotation | 64-dim float | Medium | Yes |
+| ORB | Rotation | 256-bit binary | Fast | No |
+
+Applied **Lowe's ratio test** (`d1/d2 < 0.75`) to filter false matches. ORB with BFMatcher Hamming distance gave real-time matching at comparable quality.
 
 ---
 
@@ -92,52 +141,75 @@ A structured progression through computer vision — from CNN fundamentals to re
 
 **Folder:** `6.Corner Detector/`
 
-| Notebook | Description |
-|----------|-------------|
-| `Harris & FAST` | Harris corner score, FAST (Features from Accelerated Segment Test), corner response maps |
+Both detectors implemented **from scratch in NumPy** — not using `cv2.cornerHarris()`.
 
-**Concepts:** Structure tensor, corner response function, non-maximum suppression
+### Harris Corner Detector
+```python
+# Structure tensor from image gradients
+Ix, Iy = sobel(gray, axis=1), sobel(gray, axis=0)
+M = [[Ix², IxIy], [IxIy, Iy²]]  # averaged over local window
+R = det(M) - k × trace(M)²      # corner response (k=0.04)
+```
+Corners: R >> 0 · Edges: R < 0 · Flat: R ≈ 0
+
+### FAST Corner Detector
+Pixel-ring test: compare 16 surrounding pixels to centre intensity. If ≥ N consecutive pixels are all brighter or all darker by `threshold`, it's a corner. Much faster than Harris — basis of ORB.
 
 ---
 
 ## 7. Face Detection & Recognition
 
-**Folder:** `Face Detection(Haar Cascade)/` · `Image Acquisition Face Detection(Haar)/` · `10.Facial Recognition System & Cancer Detection/`
+**Folders:** `Face Detection(Haar Cascade)/` · `10.Facial Recognition System.../`
 
-| Notebook / Script | Description |
-|-------------------|-------------|
-| `face_detection_backend.py` | Flask/FastAPI backend serving Haar Cascade face detection |
-| `face_detection_frontend.py` | Real-time webcam face detection frontend |
-| `Image Acquisition Face Detection` | Full pipeline: image capture → preprocessing → Haar detection |
-| `Facial Recognition CNN` | CNN trained with triplet loss for face verification (FaceNet-inspired) |
+### Haar Cascade Face Detection
+Real-time face detection pipeline: webcam capture → grayscale → Haar Cascade (`haarcascade_frontalface_default.xml`) → bounding box overlay. Separate backend/frontend scripts for server-side and display.
 
-**Concepts:** Haar Cascade, Viola-Jones, embedding space, triplet loss, Siamese networks
+### Facial Recognition with Triplet Loss (CelebA)
+FaceNet-inspired CNN trained with **triplet loss** on the CelebA triplets dataset:
+
+```
+L = max(||f(anchor) - f(positive)||² - ||f(anchor) - f(negative)||² + margin, 0)
+```
+
+The network learns a 128-dim embedding space where faces of the same person cluster together. At inference: cosine similarity between stored embeddings and query face.
+
+**Dataset:** `quadeer15sh/celeba-face-recognition-triplets` (Kaggle)
 
 ---
 
 ## 8. Video Analytics
 
-**Folder:** `7.YoloCVVideo & Schementic/` · `8.Traffic Monitoring & Video Analytic.ipynb/`
+**Folder:** `8.Traffic Monitoring & Video Analytic.ipynb/`
 
-| Notebook | Description |
-|----------|-------------|
-| `YOLO CV Lab` | YOLOv8 on video streams — object tracking, trajectory visualisation |
-| `Traffic Monitoring` | Vehicle detection + counting on 3 traffic video clips using YOLOv8 + supervision |
-| `Video Analytics` | Extended pipeline: speed estimation, zone analytics, heatmaps |
+Real-time traffic monitoring system built on YOLOv8 + supervision, tested on 3 actual traffic video clips.
 
-**Concepts:** Multi-object tracking (ByteTrack), DeepSORT, counting lines, zone detection
+**Features implemented:**
+- Vehicle detection and classification (car, truck, bus, motorbike)
+- Multi-object tracking (ByteTrack)
+- **Speed estimation** (pixels/frame → km/h via calibration)
+- **Red light violation detection** (crossing defined stop line on red)
+- **Congestion detection** (vehicle density threshold per zone)
+- Heatmap generation over time
+
+```python
+tracker = sv.ByteTrack()
+annotator = sv.BoxAnnotator()
+line_zone = sv.LineZone(start=Point(x1,y1), end=Point(x2,y2))
+```
 
 ---
 
 ## 9. Medical AI
 
-**Folder:** `10.Facial Recognition System & Cancer Detectionusing FaceNet-inspired architecture/`
+**Folder:** `10.Facial Recognition System & Cancer Detection.../`
 
-| Notebook | Description |
-|----------|-------------|
-| `Cancer Detection` | Histopathology image classification — CNN trained on cell imagery to distinguish malignant vs benign |
+### Breast Cancer Detection (IDC Histopathology)
+Binary classification of 50×50 pixel histopathology patches: **IDC positive** (invasive ductal carcinoma) vs **IDC negative**.
 
-**Concepts:** Medical image classification, class imbalance, confusion matrix, ROC-AUC
+- **Dataset:** `paultimothymooney/breast-histopathology-images` — 277,524 patches from 162 patients
+- **Challenge:** Class imbalance (~60% negative, ~40% positive)
+- **Architecture:** Custom CNN with ImageDataGenerator augmentation
+- **Metrics:** Accuracy, AUC-ROC, precision, recall, F1 — confusion matrix analysis
 
 ---
 
@@ -145,11 +217,16 @@ A structured progression through computer vision — from CNN fundamentals to re
 
 **Folder:** `2.OCR-Case Xerox/`
 
-| Notebook | Description |
-|----------|-------------|
-| `OCR Case Xerox` | End-to-end document digitisation: image quality analysis (lossless vs lossy), EasyOCR extraction, post-processing |
+Investigation of the famous **Xerox JBIG2 compression bug** where scanned documents had digits silently swapped during copying. Explores why this escaped human detection but breaks OCR.
 
-**Concepts:** EasyOCR, Tesseract, image compression artefacts, document preprocessing
+**Pipeline:**
+1. Load document at three quality levels (original, lossless, lossy)
+2. Connected component analysis — extract character blobs
+3. Shape descriptors: **Hu Moments** (rotation-invariant) + aspect ratio
+4. Distance-based matching to detect compression-introduced character substitutions
+5. EasyOCR extraction + accuracy comparison across compression levels
+
+**Key insight:** JBIG2 uses pattern substitution for compression — two visually similar glyphs (6 and 8) get mapped to the same pattern, silently changing document content. OCR fails because the bit-level representation is wrong, even though it looks correct to a human.
 
 ---
 
@@ -157,31 +234,37 @@ A structured progression through computer vision — from CNN fundamentals to re
 
 **Folder:** `11.LAB/`
 
-| Notebook | Description |
-|----------|-------------|
-| `Facial Recognition System` | Complete production-style system: detection → alignment → embedding → verification |
-| `Image Stitching (Deep Learning)` | Homography estimation with CNNs for panoramic image creation |
-| `Image Stitching (OpenCV)` | Classical SIFT + RANSAC homography + warping pipeline |
-| `Lab 5` | Mixed practicals |
+### Image Stitching — Classical vs Deep Learning
+
+| Method | Approach | Strength |
+|--------|----------|----------|
+| Classical (`Manual Image_Stitching_OpenCV`) | SIFT keypoints → RANSAC homography → perspective warp | Interpretable; works without training data |
+| Deep Learning (`ImageStitching_DeepLearning`) | CNN estimates homography directly from image pairs | Handles textureless / low-feature regions better |
+
+### Complete Facial Recognition System
+Production-style pipeline: MTCNN face detection → alignment → FaceNet embedding → cosine similarity verification → identity lookup.
+
+### TESLA Vision Pipeline
+System design document for an autonomous vehicle perception pipeline — object detection, depth estimation, lane detection integration.
 
 ---
 
 ## Tech Stack
 
-| Category | Libraries |
-|----------|-----------|
-| Deep Learning | PyTorch, TensorFlow, Keras |
-| Computer Vision | OpenCV, scikit-image, Pillow |
-| Object Detection | Ultralytics (YOLOv8, YOLOv11), supervision |
-| OCR | EasyOCR, Tesseract |
-| Data & Viz | NumPy, Pandas, Matplotlib, Seaborn |
-| Environment | Jupyter Notebook, Google Colab |
+```
+Deep Learning    PyTorch · TensorFlow / Keras
+Object Detection Ultralytics YOLOv8 / YOLOv11 · supervision
+Computer Vision  OpenCV · scikit-image · Pillow
+OCR              EasyOCR · Tesseract
+Data & Viz       NumPy · Pandas · Matplotlib · Seaborn
+Platform         Jupyter Notebook · Google Colab · Kaggle
+```
 
 ## Setup
 
 ```bash
-pip install torch torchvision opencv-python ultralytics easyocr \
-            matplotlib numpy pandas scikit-image supervision
+pip install torch torchvision tensorflow opencv-python ultralytics \
+            easyocr supervision scikit-image matplotlib pandas seaborn
 ```
 
-> Some notebooks require a GPU (Colab recommended for training notebooks).
+> Training notebooks require a GPU — use Google Colab (free T4) for large datasets.
